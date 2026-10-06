@@ -1,22 +1,29 @@
 import 'package:dio/dio.dart';
 
-/// Optional token supplier interface for future Phase 1 authentication integration.
+/// Optional token supplier interface for Bearer token injection.
 ///
-/// NOTE: Token storage and session management are strictly Phase 1 and are not
-/// implemented in Phase 0.
+/// Implemented by [SecureStorageService].
 abstract interface class AuthTokenProvider {
   Future<String?> getToken();
 }
 
-/// Dio interceptor for request headers.
+/// Dio interceptor that handles request authentication headers and
+/// triggers forced logout on HTTP 401 responses.
 ///
+/// Responsibilities:
+/// - Attaches `Authorization: Bearer <token>` if a token is available.
 /// - Attaches `Accept: application/json` to every request.
-/// - Sets `Content-Type: application/json` for requests with JSON body if not present.
-/// - Optionally queries [AuthTokenProvider] for an existing Bearer token.
+/// - On HTTP 401 response: invokes [onUnauthorized] callback so [AuthBloc]
+///   can clear storage and redirect to login — without a circular dependency.
 class AuthInterceptor extends Interceptor {
   final AuthTokenProvider? tokenProvider;
 
-  AuthInterceptor({this.tokenProvider});
+  /// Called when any API response returns HTTP 401 (unauthenticated).
+  ///
+  /// The callback should trigger an `AuthForced401` event on [AuthBloc].
+  final void Function()? onUnauthorized;
+
+  AuthInterceptor({this.tokenProvider, this.onUnauthorized});
 
   @override
   Future<void> onRequest(
@@ -32,11 +39,18 @@ class AuthInterceptor extends Interceptor {
           options.headers['Authorization'] = 'Bearer $token';
         }
       } catch (_) {
-        // Token retrieval failure should not crash request setup in Phase 0
+        // Token retrieval failure must not block the request.
       }
     }
 
     return handler.next(options);
   }
-}
 
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    if (err.response?.statusCode == 401 && onUnauthorized != null) {
+      onUnauthorized!();
+    }
+    handler.next(err);
+  }
+}

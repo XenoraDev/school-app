@@ -12,20 +12,22 @@ class ApiClient {
     required EnvConfig config,
     Dio? dio,
     AuthTokenProvider? tokenProvider,
-  })  : _config = config,
-        _dio = dio ?? Dio() {
+    void Function()? onUnauthorized,
+  }) : _config = config,
+       _dio = dio ?? Dio() {
     _dio.options = BaseOptions(
       baseUrl: _config.baseUrl,
       connectTimeout: _config.connectTimeout,
       receiveTimeout: _config.receiveTimeout,
       sendTimeout: _config.sendTimeout,
-      headers: {
-        'Accept': 'application/json',
-      },
+      headers: {'Accept': 'application/json'},
     );
 
     _dio.interceptors.addAll([
-      AuthInterceptor(tokenProvider: tokenProvider),
+      AuthInterceptor(
+        tokenProvider: tokenProvider,
+        onUnauthorized: onUnauthorized,
+      ),
       ErrorInterceptor(),
     ]);
   }
@@ -119,4 +121,3 @@ class ApiClient {
     );
   }
 }
-

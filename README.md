@@ -1,16 +1,22 @@
-# school_app
+# School App
 
-A new Flutter project.
+Flutter client for the School API. Phase 0 provides the shared network and error-handling foundation. Phase 1 implements school-slug login, secure session storage, MFA verification and enrollment, `/common/me` profile and ability loading, logout, and forced local logout after an unauthorized response.
 
-## Getting Started
+## Configure and run
 
-This project is a starting point for a Flutter application.
+The development API defaults to `http://localhost:8000/api/v1`. Override it at build or run time when needed:
 
-A few resources to get you started if this is your first Flutter project:
+```sh
+flutter run --dart-define=API_BASE_URL=https://your-api-host/api/v1
+```
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+Staging and production URLs remain intentionally unconfigured until deployment endpoints are provided.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Verify
+
+```sh
+flutter analyze
+flutter test
+```
+
+See [docs/PHASE_TRACKER.md](docs/PHASE_TRACKER.md) for implementation status and [docs/API_CONTRACT.md](docs/API_CONTRACT.md) for the API request and response contracts.
