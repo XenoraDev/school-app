@@ -103,18 +103,18 @@ class AccountProfile {
 
   @override
   int get hashCode => Object.hash(
-        runtimeType,
-        id,
-        kind,
-        name,
-        email,
-        userType,
-        school,
-        Object.hashAll(abilities),
-        emailVerified,
-        mfaEnabled,
-        mfaRequired,
-      );
+    runtimeType,
+    id,
+    kind,
+    name,
+    email,
+    userType,
+    school,
+    Object.hashAll(abilities),
+    emailVerified,
+    mfaEnabled,
+    mfaRequired,
+  );
 
   @override
   String toString() =>
@@ -135,6 +135,26 @@ extension AccountPermissionsX on AccountProfile {
   bool get hasTeachingAccess =>
       userType == 'teacher' || (userType == 'staff' && can('classes.view'));
 
+  /// Whether this profile may enter the teacher workspace UI.
+  /// Backend authorization still decides each endpoint request.
+  bool get canOpenTeacherWorkspace =>
+      (userType == 'teacher' || userType == 'staff') &&
+      (can('classes.view') || can('subjects.view'));
+
+  /// User type alone never grants access to school administration.
+  bool get canOpenAdminWorkspace =>
+      userType == 'staff' &&
+      abilities.any(
+        const {
+          'school.view',
+          'academic_years.view',
+          'classes.view',
+          'subjects.view',
+          'staff.view',
+          'roles.view',
+        }.contains,
+      );
+
   /// `true` for guardian (parent) accounts.
   bool get isParent => userType == 'parent';
 
@@ -144,4 +164,3 @@ extension AccountPermissionsX on AccountProfile {
   /// `true` if the school is suspended — mutations will return 403.
   bool get isSchoolSuspended => school.status == 'suspended';
 }
-

@@ -10,7 +10,7 @@ This document tracks progress and completion gates across both backend delivery 
 |---|---|:---:|:---:|:---:|:---:|:---:|
 | **Phase 0** | **Foundation & Network Core** | [x] | [x] | [ ] | [ ] | **READY TO IMPLEMENT** |
 | **Phase 1** | **Authentication, Session & MFA** | [x] | [x] | [x] | [x] | **COMPLETE** |
-| **Phase 2A** | **Teacher Workspace (Sections/Subjects)** | [x] | [x] | [ ] | [ ] | **READY TO IMPLEMENT** |
+| **Phase 2A** | **Teacher Workspace (Sections/Subjects)** | [x] | [x] | [x] | [x] | **COMPLETE** |
 | **Phase 2B** | **School Structure & Staff Directory** | [x] | [x] | [ ] | [ ] | **READY TO IMPLEMENT** |
 | **Phase 3** | **Students, Guardians & Admissions** | [ ] | [ ] | [ ] | [ ] | **BLOCKED BY BACKEND** |
 | **Phase 4** | **Teachers' Attendance Workspace** | [ ] | [ ] | [ ] | [ ] | **BLOCKED BY BACKEND** |
@@ -63,31 +63,37 @@ This document tracks progress and completion gates across both backend delivery 
 ### Phase 2A: Teacher Workspace (Sections & Subjects)
 * [x] **Backend Completion**: Teaching assignments, `TeacherScope`, active sections and subjects routes (`routes/api.php`, `MyScopeController.php`).
 * [x] **API Verification**: Verified against `school-api` source code.
-* [ ] **Flutter Implementation**:
-  * [ ] Teacher Dashboard Shell (`StatefulShellRoute`).
-  * [ ] My Sections Screen (`GET /teacher/my/sections`).
-  * [ ] Section Card widget (name, room, grade level, lead teacher badge, subject chips).
-  * [ ] My Subjects Screen (`GET /teacher/my/subjects`).
-  * [ ] Empty state view for teachers with no active teaching assignments.
-* [ ] **Flutter Testing**:
-  * [ ] Unit test: Parsing `TeacherSection` and `TeacherSubject` JSON DTOs.
-  * [ ] Widget test: Rendering sections list, empty state, and error retry.
+* [x] **Flutter Implementation**:
+  * [x] Ability-aware teacher workspace shell with separate Sections and Subjects destinations.
+  * [x] My Sections screen (`GET /teacher/my/sections`) and section detail from the returned scoped data.
+  * [x] Section cards with room, grade/year, class-teacher badge, and subject chips.
+  * [x] My Subjects screen (`GET /teacher/my/subjects`) with assigned sections.
+  * [x] Independent loading, error/retry, and unassigned empty states.
+  * [x] Route entry requires teacher/staff audience plus `classes.view` or `subjects.view`; each destination is limited by its specific ability.
+* [x] **Flutter Testing**:
+  * [x] Unit tests: Teacher section and subject DTO/entity mapping.
+  * [x] Unit tests: Ability-aware workspace eligibility and independent BLoC loading/retry.
+  * [x] Widget tests: Section/subject empty states and section badge/subject rendering.
 
 ---
 
 ### Phase 2B: School Administration Setup & Structure
 * [x] **Backend Completion**: School profile/settings, academic years (activate/close), terms, grade levels, sections, subjects, staff directory, roles & permissions (`routes/api.php`, `SchoolApiController.php`).
 * [x] **API Verification**: Verified against `school-api` source code.
-* [ ] **Flutter Implementation**:
-  * [ ] Admin Dashboard Shell.
-  * [ ] Setup Checklist Screen (`GET /school/setup`).
-  * [ ] Academic Years Screen (`GET/POST /school/academic-years`, activate, close).
-  * [ ] Sections Management Screen (`GET/POST /school/sections`, assign class teacher).
-  * [ ] Staff Directory Screen (`GET/POST /school/staff`, disable/enable login).
-  * [ ] Roles & Permissions Screen (`GET /school/roles`, update permissions with step-up password).
-* [ ] **Flutter Testing**:
-  * [ ] Unit test: Academic Year activate/close state logic.
-  * [ ] Widget test: Step-up password dialog validation.
+* [x] **Flutter Implementation**:
+  * [x] Separate Admin shell with staff-and-ability route guard and ability-filtered navigation; no routing to Admin from `user_type` alone.
+  * [x] School setup checklist, school profile, and versioned settings (`/school/setup`, `/school/profile`, `/school/settings`).
+  * [x] Academic years create/update/activate/step-up close and terms create/update/delete.
+  * [x] Grade level CRUD/archive/reorder; section CRUD/close/reopen/class-teacher assignment.
+  * [x] Subject CRUD/archive and curriculum replacement.
+  * [x] Staff directory create/update/archive and enable/disable existing logins.
+  * [x] Role and permission catalogue viewing and permission replacement with password confirmation.
+  * [x] Cursor pagination plus loading, empty, retryable error, and backend error handling through the shared interceptors.
+  * [x] Invitation/provisioning, custom role create/rename/delete, staff role assignment, and offline mutations remain deferred.
+* [x] **Flutter Testing**:
+  * [x] Unit tests: endpoint constants, response DTO parsing, and admin/teacher workspace ability eligibility.
+  * [x] Cubit tests: checklist failure/retry and successful loading.
+  * [x] Widget test: setup checklist rendering.
 
 ---
 

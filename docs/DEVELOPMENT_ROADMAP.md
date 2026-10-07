@@ -49,19 +49,21 @@ This roadmap is synchronized directly with the backend roadmap of `school-api`.
 
 ## Phase 2: Teacher Workspace & Academic Structure
 * **Backend Status**: `[IMPLEMENTED BACKEND]`
-* **Flutter Status**: `[FLUTTER READY]`
-* **Sub-Phase 2A (Teacher Workspace)**:
-  * Teacher Dashboard Shell with persistent bottom navigation.
-  * My Sections Screen: Consumes `GET /api/v1/teacher/my/sections`, displays assigned sections, room numbers, and subject pills; shows class-teacher indicator badge.
-  * My Subjects Screen: Consumes `GET /api/v1/teacher/my/subjects`, displays assigned subjects with corresponding class sections.
-  * Empty state handling for unassigned teachers.
-* **Sub-Phase 2B (School Admin Setup & Structure)**:
-  * Admin Dashboard Shell with navigation drawer.
-  * Setup Checklist Screen: Consumes `GET /api/v1/school/setup`.
-  * Academic Years Screen: Lists years, displays active status, create new year, activate year, close year with step-up password confirmation.
-  * Sections & Classes Screen: Browse grade levels and sections, assign class teachers (`PUT /school/sections/{id}/class-teacher`).
-  * Staff Directory Screen: Browse staff list with status filters, create staff, disable/enable login (`POST /school/staff/{id}/disable-login`).
-  * Roles & Permissions Screen: View roles, view module permission catalogue, update role permissions with step-up password dialog.
+* **Flutter Status**: `[PHASE 2A AND PHASE 2B IMPLEMENTED]`
+* **Sub-Phase 2A (Teacher Workspace) — Implemented**:
+  * Ability-aware Teacher Workspace Shell with persistent bottom navigation.
+  * My Sections: consumes `GET /api/v1/teacher/my/sections`, displays caller-scoped sections, rooms, and class-teacher indicator.
+  * My Subjects: consumes `GET /api/v1/teacher/my/subjects`, displays assigned subjects and corresponding sections.
+  * Section detail is rendered from fields returned by the scoped sections endpoint.
+  * Loading, retryable error, and empty states for unassigned teachers.
+* **Sub-Phase 2B (School Admin Setup & Structure) — Implemented**:
+  * Separate Admin shell with ability-filtered navigation; staff without an admin read ability remain at `/profile` and staff type alone never grants Admin entry.
+  * Setup checklist, school profile and versioned settings editing.
+  * Academic years and terms; year activation/step-up close, term create/update/delete.
+  * Grade levels (including archive/unarchive and ordering), sections (create/update/close/reopen/class-teacher assignment), subjects and curriculum replacement.
+  * Staff directory CRUD/status actions and login enable/disable. Login/invitation creation and invitation lifecycle remain deferred.
+  * Role and permission catalogue viewing and permission replacement with password confirmation. Custom role CRUD and staff role assignment remain deferred.
+  * Cursor-paged resource lists, loading/empty/error/retry states, and standard API handling for 401, 403, 409 and 422 responses.
 * **Exit Criteria**: Verified read/write operations for both Teacher and School Admin roles according to backend permissions.
 
 ---

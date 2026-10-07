@@ -333,67 +333,29 @@ Open to `user_type` = `teacher` or `staff`. Scoped strictly to active teaching a
 
 ## 5. School Administration Endpoints (`/api/v1/school/*`)
 
-Restricted to `user_type = staff` with appropriate `module.action` token abilities.
+These routes require a full authenticated session, the staff audience, and the endpoint's specific ability. Mobile ability checks only control navigation and affordances; Laravel policies remain authoritative. Collection routes use cursor pagination (`data`, `meta.per_page`, `meta.next_cursor`, `meta.has_more`). Public resource IDs are ULIDs.
 
-### 5.1 Setup Checklist
-* **Endpoint**: `GET /api/v1/school/setup`
-* **Permission**: `school.view`
-* **Response**: `200 OK`
-  ```json
-  {
-    "data": [
-      { "key": "profile", "done": true },
-      { "key": "academic_year", "done": true },
-      { "key": "terms", "done": true },
-      { "key": "grade_levels", "done": true },
-      { "key": "sections", "done": true },
-      { "key": "subjects", "done": true },
-      { "key": "curriculum", "done": true },
-      { "key": "staff", "done": true },
-      { "key": "teaching", "done": false }
-    ],
-    "meta": { "request_id": "..." }
-  }
-  ```
+### Setup, school profile, and settings
+* `GET /school/setup` (`school.view`) returns `{key, done}` rows for `profile`, `academic_year`, `terms`, `grade_levels`, `sections`, `subjects`, `curriculum`, `staff`, and `teaching`.
+* `GET /school/profile` (`school.view`) returns `version` and the profile fields `address_line1`, `address_line2`, `city`, `state`, `postal_code`, `country`, `phone`, `email`, `website`, `affiliation_board`, `affiliation_number`, `established_year`. `PATCH /school/profile` (`school.update`) requires `version` plus one or more allowed fields; stale versions return 409.
+* `GET /school/settings` (`school.view`) returns `{key,value,version}` rows. `PATCH /school/settings` (`settings.manage`) takes `{settings:[{key,value,version}]}` and applies the versioned batch atomically.
 
-### 5.2 School Profile
-* **Get Profile**: `GET /api/v1/school/profile` (`school.view`)
-* **Update Profile**: `PATCH /api/v1/school/profile` (`school.update`)
-  * Requires `version` (optimistic lock; 409 on stale version).
-  * Fields: `name`, `address_line1`, `address_line2`, `city`, `state`, `postal_code`, `country`, `phone`, `email`, `website`, `affiliation_board`, `established_year`.
+### Academic structure
+* Academic years: `GET/POST /school/academic-years`, `GET/PATCH /school/academic-years/{id}`, and `POST .../{id}/activate|close` (`academic_years.view` for reads, `academic_years.manage` for writes). Create body: `{name,start_date,end_date}`. Close requires `{reason,confirm_name,password}`; conflicts and invalid transitions return 409.
+* Terms: `GET/POST /school/terms`, `GET/PATCH/DELETE /school/terms/{id}` with the same view/manage abilities. Create body: `{academic_year,name,start_date,end_date}`; sequence is server assigned.
+* Grade levels: `GET/POST /school/grade-levels`, `GET/PATCH /school/grade-levels/{id}`, `POST /school/grade-levels/reorder` with `{order:[ulid,...]}`, and archive/unarchive actions. Read/write abilities: `classes.view`/`classes.manage`.
+* Sections: `GET/POST /school/sections`, `GET/PATCH /school/sections/{id}`, close/reopen actions, and `PUT /school/sections/{id}/class-teacher` with `{staff:ulid|null}`. Create body uses `{academic_year,grade_level,name,capacity,room}`; the year and grade are immutable after creation. Read/write abilities: `classes.view`/`classes.manage`.
+* Subjects: `GET/POST /school/subjects`, `GET/PATCH /school/subjects/{id}`, archive/unarchive actions. Create body `{code,name,type}`; code is immutable. Read/write abilities: `subjects.view`/`subjects.manage`.
+* Curriculum: `GET /school/curriculum?academic_year={ulid}&grade_level={ulid}` and `PUT /school/curriculum` with `{academic_year,grade_level,subjects:[{subject,kind}]}` (`subjects.view`/`subjects.manage`). PUT replaces the complete set.
 
-### 5.3 Academic Years
-* **List**: `GET /api/v1/school/academic-years?filter[status]=planned|current|closed`
-* **Create**: `POST /api/v1/school/academic-years`
-  * Body: `{ "name": "2026-2027", "start_date": "2026-04-01", "end_date": "2027-03-31" }`
-* **Activate (Planned $\rightarrow$ Current)**: `POST /api/v1/school/academic-years/{id}/activate` (409 if another year is currently active).
-* **Close (Current $\rightarrow$ Closed)**: `POST /api/v1/school/academic-years/{id}/close`
-  * Body: `{ "reason": "...", "confirm_name": "2026-2027", "password": "<step_up_password>" }`
+### Staff directory
+* `GET/POST /school/staff`, `GET/PATCH /school/staff/{id}`, archive/unarchive, and disable-login/enable-login actions. Reads require `staff.view`; creation/update/archive use `staff.create`, `staff.update`, and `staff.archive`; login switches require `users.manage`.
+* Create requires `{employee_no,full_name}` and accepts email, phone, designation, department, `is_teaching`, `joined_on`, and `left_on`. Update requires the returned `version`. Resource rows expose the staff record and login state, never an internal user ID.
+* Login creation, invitations, invitation acceptance, and staff role assignment are separate routes and outside this Phase 2B client scope.
 
-### 5.4 Grade Levels & Sections
-* **List Grade Levels**: `GET /api/v1/school/grade-levels`
-* **List Sections**: `GET /api/v1/school/sections?filter[academic_year]=<ulid>&filter[grade_level]=<ulid>`
-* **Assign Class Teacher**: `PUT /api/v1/school/sections/{id}/class-teacher`
-  * Body: `{ "staff": "<staff_ulid>" }` (or `null` to clear).
+### Roles and permissions
+* `GET /school/permissions` returns module groups containing `{name,action}`. `GET /school/roles` returns `{id,name,reserved,protected,permission_count,holder_count}`; `GET /school/roles/{id}` also returns permission names. Both require `roles.view`.
+* `PUT /school/roles/{id}/permissions` requires `roles.manage` and `{permissions:[name,...],password}`. It replaces the complete set, enforces backend no-escalation/protected-role rules, and revokes affected holders' sessions. Custom role create/rename/delete are excluded from Phase 2B.
 
-### 5.5 Subjects & Curriculum
-* **List Subjects**: `GET /api/v1/school/subjects?filter[q]=math&filter[type]=core|elective`
-* **Get Curriculum**: `GET /api/v1/school/curriculum?academic_year=<ulid>&grade_level=<ulid>`
-* **Replace Curriculum**: `PUT /api/v1/school/curriculum`
-  * Body: `{ "academic_year": "<ulid>", "grade_level": "<ulid>", "subjects": [{ "subject": "<ulid>", "kind": "core" }] }`
-
-### 5.6 Staff Directory & Logins
-* **List Staff**: `GET /api/v1/school/staff?filter[status]=active|resigned&filter[is_teaching]=1&filter[q]=sharma`
-* **Create Staff**: `POST /api/v1/school/staff`
-* **Create Login**: `POST /api/v1/school/staff/{id}/login`
-  * Body: `{ "user_type": "teacher", "email": "staff@school.internal" }`
-* **Disable Login**: `POST /api/v1/school/staff/{id}/disable-login` (Immediately revokes all tokens).
-* **Assign Staff Roles**: `PUT /api/v1/school/staff/{id}/roles`
-  * Body: `{ "roles": ["<role_ulid>"], "password": "<step_up_password_if_admin>" }`
-
-### 5.7 Roles & Permissions
-* **Permission Catalogue**: `GET /api/v1/school/permissions` (Returns list grouped by module).
-* **List Roles**: `GET /api/v1/school/roles`
-* **Update Role Permissions**: `PUT /api/v1/school/roles/{id}/permissions`
-  * Body: `{ "permissions": ["classes.view", "attendance.view"], "password": "<caller_password>" }` (Password step-up required; revokes tokens of all holders).
+The implementation is verified against the matching route declarations, resources, authorization tests, and feature contract tests in `school-api`. Do not infer permission assignment, invitation, or other workflows from endpoints omitted above.
 

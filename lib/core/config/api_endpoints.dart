@@ -50,5 +50,47 @@ abstract final class ApiEndpoints {
 
   /// Revoke a specific token by integer ID (DELETE /api/v1/auth/tokens/{id})
   static String revokeToken(int id) => '/auth/tokens/$id';
-}
 
+  // Phase 2A: teacher workspace (caller-scoped endpoints).
+  static const String mySections = '/teacher/my/sections';
+  static const String mySubjects = '/teacher/my/subjects';
+
+  // Phase 2B: school administration (staff audience, ability protected).
+  static const String schoolSetup = '/school/setup';
+  static const String schoolProfile = '/school/profile';
+  static const String schoolSettings = '/school/settings';
+  static const String academicYears = '/school/academic-years';
+  static const String terms = '/school/terms';
+  static const String gradeLevels = '/school/grade-levels';
+  static const String gradeLevelReorder = '/school/grade-levels/reorder';
+  static const String sections = '/school/sections';
+  static const String subjects = '/school/subjects';
+  static const String curriculum = '/school/curriculum';
+  static const String staff = '/school/staff';
+  static const String roles = '/school/roles';
+  static const String permissions = '/school/permissions';
+
+  static String academicYear(String id) => '$academicYears/$id';
+  static String academicYearActivate(String id) =>
+      '${academicYear(id)}/activate';
+  static String academicYearClose(String id) => '${academicYear(id)}/close';
+  static String term(String id) => '$terms/$id';
+  static String gradeLevel(String id) => '$gradeLevels/$id';
+  static String gradeLevelArchive(String id) => '${gradeLevel(id)}/archive';
+  static String gradeLevelUnarchive(String id) => '${gradeLevel(id)}/unarchive';
+  static String sectionsClose(String id) => '$sections/$id/close';
+  static String sectionsReopen(String id) => '$sections/$id/reopen';
+  static String sectionClassTeacher(String id) => '$sections/$id/class-teacher';
+  static String subject(String id) => '$subjects/$id';
+  static String subjectArchive(String id) => '${subject(id)}/archive';
+  static String subjectUnarchive(String id) => '${subject(id)}/unarchive';
+  static String staffRecord(String id) => '$staff/$id';
+  static String staffArchive(String id) => '${staffRecord(id)}/archive';
+  static String staffUnarchive(String id) => '${staffRecord(id)}/unarchive';
+  static String staffDisableLogin(String id) =>
+      '${staffRecord(id)}/disable-login';
+  static String staffEnableLogin(String id) =>
+      '${staffRecord(id)}/enable-login';
+  static String role(String id) => '$roles/$id';
+  static String rolePermissions(String id) => '${role(id)}/permissions';
+}

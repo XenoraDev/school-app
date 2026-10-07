@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:school_app/core/config/env_config.dart';
+import 'package:school_app/core/config/api_endpoints.dart';
 import 'package:school_app/core/network/api_client.dart';
 import 'package:school_app/core/storage/secure_storage_service.dart';
 import 'package:school_app/features/auth/data/datasources/auth_remote_data_source.dart';
@@ -11,6 +15,18 @@ import 'package:school_app/features/auth/domain/entities/mfa_enrollment_info.dar
 import 'package:school_app/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:school_app/features/auth/presentation/bloc/auth_event.dart';
 import 'package:school_app/features/auth/presentation/bloc/auth_state.dart';
+import 'package:school_app/features/admin_workspace/data/datasources/admin_remote_data_source.dart';
+import 'package:school_app/features/admin_workspace/data/repositories/admin_repository_impl.dart';
+import 'package:school_app/features/admin_workspace/presentation/bloc/admin_workspace_cubit.dart';
+import 'package:school_app/features/admin_workspace/presentation/screens/admin_screens.dart';
+import 'package:school_app/features/admin_workspace/presentation/screens/admin_special_screens.dart';
+import 'package:school_app/features/teacher_workspace/data/datasources/teacher_workspace_remote_data_source.dart';
+import 'package:school_app/features/teacher_workspace/data/repositories/teacher_workspace_repository_impl.dart';
+import 'package:school_app/features/teacher_workspace/presentation/bloc/teacher_workspace_bloc.dart';
+import 'package:school_app/features/teacher_workspace/presentation/screens/my_sections_screen.dart';
+import 'package:school_app/features/teacher_workspace/presentation/screens/my_subjects_screen.dart';
+import 'package:school_app/features/teacher_workspace/presentation/screens/teacher_workspace_shell.dart';
+import 'package:school_app/features/teacher_workspace/presentation/teacher_route_policy.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,24 +43,489 @@ void main() {
     ),
     storage: storage,
   )..add(const AuthAppStarted());
-  runApp(SchoolApp(authBloc: authBloc));
-}
-
-class SchoolApp extends StatelessWidget {
-  const SchoolApp({required this.authBloc, super.key});
-  final AuthBloc authBloc;
-
-  @override
-  Widget build(BuildContext context) => BlocProvider.value(
-    value: authBloc,
-    child: MaterialApp(
-      title: 'School App',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-      ),
-      home: const _AuthRouter(),
+  final teacherBloc = TeacherWorkspaceBloc(
+    repository: TeacherWorkspaceRepositoryImpl(
+      remote: TeacherWorkspaceRemoteDataSourceImpl(client: client),
     ),
   );
+  final adminCubit = AdminWorkspaceCubit(
+    AdminRepositoryImpl(remote: AdminRemoteDataSourceImpl(client: client)),
+  );
+  runApp(
+    SchoolApp(
+      authBloc: authBloc,
+      teacherBloc: teacherBloc,
+      adminCubit: adminCubit,
+    ),
+  );
+}
+
+class SchoolApp extends StatefulWidget {
+  const SchoolApp({
+    required this.authBloc,
+    required this.teacherBloc,
+    required this.adminCubit,
+    super.key,
+  });
+  final AuthBloc authBloc;
+  final TeacherWorkspaceBloc teacherBloc;
+  final AdminWorkspaceCubit adminCubit;
+
+  @override
+  State<SchoolApp> createState() => _SchoolAppState();
+}
+
+class _SchoolAppState extends State<SchoolApp> {
+  late final _AuthRefreshNotifier _refreshNotifier = _AuthRefreshNotifier(
+    widget.authBloc,
+  );
+  late final GoRouter _router = _createRouter();
+
+  GoRouter _createRouter() => GoRouter(
+    initialLocation: '/',
+    refreshListenable: _refreshNotifier,
+    redirect: (context, routeState) {
+      final authState = widget.authBloc.state;
+      final path = routeState.uri.path;
+      if (authState is AuthAuthenticated) {
+        final profile = authState.profile;
+        if (path == '/') {
+          if (profile.canOpenTeacherWorkspace) {
+            return profile.can('classes.view')
+                ? '/teacher/sections'
+                : '/teacher/subjects';
+          }
+          if (profile.canOpenAdminWorkspace) return '/admin/setup';
+          return '/profile';
+        }
+        final teacherRedirect = teacherWorkspaceRouteRedirect(profile, path);
+        if (teacherRedirect != null) return teacherRedirect;
+        if (path.startsWith('/admin')) {
+          if (!profile.canOpenAdminWorkspace) return '/profile';
+          final requiredAbility = _adminRouteAbility(path);
+          if (requiredAbility != null && !profile.can(requiredAbility)) {
+            return _firstAdminRoute(profile);
+          }
+        }
+        return null;
+      }
+      return path == '/' ? null : '/';
+    },
+    routes: [
+      GoRoute(path: '/', builder: (context, state) => const _AuthRouter()),
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) {
+          final authState = widget.authBloc.state;
+          return authState is AuthAuthenticated
+              ? _HomeScreen(profile: authState.profile)
+              : const _AuthRouter();
+        },
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          final authState = widget.authBloc.state;
+          if (authState is! AuthAuthenticated) return const _AuthRouter();
+          return TeacherWorkspaceShell(
+            profile: authState.profile,
+            navigationShell: navigationShell,
+          );
+        },
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/teacher/sections',
+                builder: (context, state) => const MySectionsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/teacher/subjects',
+                builder: (context, state) => const MySubjectsScreen(),
+              ),
+            ],
+          ),
+        ],
+      ),
+      ShellRoute(
+        builder: (context, state, child) {
+          final authState = widget.authBloc.state;
+          if (authState is! AuthAuthenticated) return const _AuthRouter();
+          return AdminWorkspaceShell(profile: authState.profile, child: child);
+        },
+        routes: [
+          GoRoute(path: '/admin', redirect: (context, state) => '/admin/setup'),
+          GoRoute(
+            path: '/admin/setup',
+            builder: (_, state) => const AdminSetupScreen(),
+          ),
+          GoRoute(
+            path: '/admin/profile',
+            builder: (context, state) => AdminResourceScreen(
+              title: 'School profile',
+              path: ApiEndpoints.schoolProfile,
+              create: false,
+              canEdit: _hasAbility(context, 'school.update'),
+              updatePath: ApiEndpoints.schoolProfile,
+              singleResource: true,
+              fields: [
+                AdminField('address_line1', 'Address line 1'),
+                AdminField('address_line2', 'Address line 2', nullable: true),
+                AdminField('city', 'City', nullable: true),
+                AdminField('state', 'State', nullable: true),
+                AdminField('postal_code', 'Postal code', nullable: true),
+                AdminField('country', 'Country'),
+                AdminField('phone', 'Phone', nullable: true),
+                AdminField('email', 'Email', nullable: true),
+                AdminField('website', 'Website', nullable: true),
+                AdminField(
+                  'affiliation_board',
+                  'Affiliation board',
+                  nullable: true,
+                ),
+                AdminField(
+                  'affiliation_number',
+                  'Affiliation number',
+                  nullable: true,
+                ),
+                AdminField(
+                  'established_year',
+                  'Established year',
+                  type: 'int',
+                  nullable: true,
+                ),
+              ],
+            ),
+          ),
+          GoRoute(
+            path: '/admin/settings',
+            builder: (context, state) => SchoolSettingsScreen(
+              canManage: _hasAbility(context, 'settings.manage'),
+            ),
+          ),
+          GoRoute(
+            path: '/admin/academic-years',
+            builder: (context, state) => AdminResourceScreen(
+              title: 'Academic years',
+              path: ApiEndpoints.academicYears,
+              create: _hasAbility(context, 'academic_years.manage'),
+              canEdit: _hasAbility(context, 'academic_years.manage'),
+              fields: const [
+                AdminField('name', 'Name', required: true),
+                AdminField(
+                  'start_date',
+                  'Start date (YYYY-MM-DD)',
+                  required: true,
+                ),
+                AdminField('end_date', 'End date (YYYY-MM-DD)', required: true),
+              ],
+              actions: _hasAbility(context, 'academic_years.manage')
+                  ? [
+                      AdminAction(
+                        'Activate',
+                        'activate',
+                        (path, id) => ApiEndpoints.academicYearActivate(id),
+                      ),
+                      AdminAction(
+                        'Close',
+                        'close',
+                        (path, id) => ApiEndpoints.academicYearClose(id),
+                      ),
+                    ]
+                  : const [],
+            ),
+          ),
+          GoRoute(
+            path: '/admin/terms',
+            builder: (context, state) => AdminResourceScreen(
+              title: 'Terms',
+              path: ApiEndpoints.terms,
+              create: _hasAbility(context, 'academic_years.manage'),
+              canEdit: _hasAbility(context, 'academic_years.manage'),
+              fields: [
+                AdminField('academic_year', 'Academic year ID', required: true),
+                AdminField('name', 'Name', required: true),
+                AdminField(
+                  'start_date',
+                  'Start date (YYYY-MM-DD)',
+                  required: true,
+                ),
+                AdminField('end_date', 'End date (YYYY-MM-DD)', required: true),
+              ],
+              actions: _hasAbility(context, 'academic_years.manage')
+                  ? [
+                      AdminAction(
+                        'Delete',
+                        'delete',
+                        (path, id) => ApiEndpoints.term(id),
+                      ),
+                    ]
+                  : const [],
+            ),
+          ),
+          GoRoute(
+            path: '/admin/grade-levels',
+            builder: (context, state) => AdminResourceScreen(
+              title: 'Grade levels',
+              path: ApiEndpoints.gradeLevels,
+              create: _hasAbility(context, 'classes.manage'),
+              canEdit: _hasAbility(context, 'classes.manage'),
+              canReorder: _hasAbility(context, 'classes.manage'),
+              fields: const [
+                AdminField('name', 'Name', required: true),
+                AdminField(
+                  'stage',
+                  'Stage (pre_primary, primary, middle, secondary)',
+                  required: true,
+                ),
+              ],
+              actions: _hasAbility(context, 'classes.manage')
+                  ? [
+                      AdminAction(
+                        'Archive',
+                        'archive',
+                        (path, id) => ApiEndpoints.gradeLevelArchive(id),
+                      ),
+                      AdminAction(
+                        'Unarchive',
+                        'unarchive',
+                        (path, id) => ApiEndpoints.gradeLevelUnarchive(id),
+                      ),
+                    ]
+                  : const [],
+            ),
+          ),
+          GoRoute(
+            path: '/admin/sections',
+            builder: (context, state) => AdminResourceScreen(
+              title: 'Sections',
+              path: ApiEndpoints.sections,
+              create: _hasAbility(context, 'classes.manage'),
+              canEdit: _hasAbility(context, 'classes.manage'),
+              fields: [
+                AdminField(
+                  'academic_year',
+                  'Academic year ID',
+                  required: true,
+                  editable: false,
+                ),
+                AdminField(
+                  'grade_level',
+                  'Grade level ID',
+                  required: true,
+                  editable: false,
+                ),
+                AdminField('name', 'Name', required: true),
+                AdminField('capacity', 'Capacity', type: 'int', nullable: true),
+                AdminField('room', 'Room', nullable: true),
+              ],
+              actions: _hasAbility(context, 'classes.manage')
+                  ? [
+                      AdminAction(
+                        'Close',
+                        'close',
+                        (path, id) => ApiEndpoints.sectionsClose(id),
+                      ),
+                      AdminAction(
+                        'Reopen',
+                        'reopen',
+                        (path, id) => ApiEndpoints.sectionsReopen(id),
+                      ),
+                      AdminAction(
+                        'Set class teacher',
+                        'class-teacher',
+                        (path, id) => ApiEndpoints.sectionClassTeacher(id),
+                      ),
+                    ]
+                  : const [],
+            ),
+          ),
+          GoRoute(
+            path: '/admin/subjects',
+            builder: (context, state) => AdminResourceScreen(
+              title: 'Subjects',
+              path: ApiEndpoints.subjects,
+              searchable: true,
+              create: _hasAbility(context, 'subjects.manage'),
+              canEdit: _hasAbility(context, 'subjects.manage'),
+              fields: const [
+                AdminField('code', 'Code', required: true, editable: false),
+                AdminField('name', 'Name', required: true),
+                AdminField(
+                  'type',
+                  'Type (core, elective, co_scholastic)',
+                  required: true,
+                ),
+              ],
+              actions: _hasAbility(context, 'subjects.manage')
+                  ? [
+                      AdminAction(
+                        'Archive',
+                        'archive',
+                        (path, id) => ApiEndpoints.subjectArchive(id),
+                      ),
+                      AdminAction(
+                        'Unarchive',
+                        'unarchive',
+                        (path, id) => ApiEndpoints.subjectUnarchive(id),
+                      ),
+                    ]
+                  : const [],
+            ),
+          ),
+          GoRoute(
+            path: '/admin/curriculum',
+            builder: (context, state) => CurriculumScreen(
+              canManage: _hasAbility(context, 'subjects.manage'),
+            ),
+          ),
+          GoRoute(
+            path: '/admin/staff',
+            builder: (context, state) => AdminResourceScreen(
+              title: 'Staff directory',
+              path: ApiEndpoints.staff,
+              searchable: true,
+              create: _hasAbility(context, 'staff.create'),
+              canEdit: _hasAbility(context, 'staff.update'),
+              fields: const [
+                AdminField(
+                  'employee_no',
+                  'Employee number',
+                  required: true,
+                  editable: false,
+                ),
+                AdminField('full_name', 'Full name', required: true),
+                AdminField('email', 'Email', nullable: true),
+                AdminField('phone', 'Phone', nullable: true),
+                AdminField('designation', 'Designation', nullable: true),
+                AdminField('department', 'Department', nullable: true),
+                AdminField(
+                  'is_teaching',
+                  'Teaching staff (true/false)',
+                  type: 'bool',
+                ),
+                AdminField(
+                  'joined_on',
+                  'Joined on (YYYY-MM-DD)',
+                  nullable: true,
+                ),
+                AdminField('left_on', 'Left on (YYYY-MM-DD)', nullable: true),
+              ],
+              actions: [
+                if (_hasAbility(context, 'users.manage')) ...[
+                  AdminAction(
+                    'Disable login',
+                    'disable-login',
+                    (path, id) => ApiEndpoints.staffDisableLogin(id),
+                  ),
+                  AdminAction(
+                    'Enable login',
+                    'enable-login',
+                    (path, id) => ApiEndpoints.staffEnableLogin(id),
+                  ),
+                ],
+                if (_hasAbility(context, 'staff.archive')) ...[
+                  AdminAction(
+                    'Archive',
+                    'archive',
+                    (path, id) => ApiEndpoints.staffArchive(id),
+                  ),
+                  AdminAction(
+                    'Unarchive',
+                    'unarchive',
+                    (path, id) => ApiEndpoints.staffUnarchive(id),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          GoRoute(
+            path: '/admin/roles',
+            builder: (context, state) =>
+                RolesScreen(canManage: _hasAbility(context, 'roles.manage')),
+          ),
+        ],
+      ),
+    ],
+  );
+
+  @override
+  void dispose() {
+    _router.dispose();
+    _refreshNotifier.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => MaterialApp.router(
+    title: 'School App',
+    theme: ThemeData(
+      colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+    ),
+    routerConfig: _router,
+    builder: (context, child) => MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: widget.authBloc),
+        BlocProvider.value(value: widget.teacherBloc),
+        BlocProvider.value(value: widget.adminCubit),
+      ],
+      child: child ?? const SizedBox.shrink(),
+    ),
+  );
+}
+
+String? _adminRouteAbility(String path) {
+  if (path == '/admin' || path == '/admin/setup' || path == '/admin/profile') {
+    return 'school.view';
+  }
+  if (path == '/admin/settings') {
+    return 'school.view';
+  }
+  if (path.startsWith('/admin/academic-years') || path == '/admin/terms') {
+    return 'academic_years.view';
+  }
+  if (path == '/admin/grade-levels' || path == '/admin/sections') {
+    return 'classes.view';
+  }
+  if (path == '/admin/subjects' || path == '/admin/curriculum') {
+    return 'subjects.view';
+  }
+  if (path == '/admin/staff') {
+    return 'staff.view';
+  }
+  if (path == '/admin/roles') {
+    return 'roles.view';
+  }
+  return null;
+}
+
+String _firstAdminRoute(AccountProfile profile) {
+  for (final item in AdminWorkspaceShell.items) {
+    if (profile.can(item.$4)) return item.$1;
+  }
+  return '/profile';
+}
+
+bool _hasAbility(BuildContext context, String ability) {
+  final state = context.read<AuthBloc>().state;
+  return state is AuthAuthenticated && state.profile.can(ability);
+}
+
+class _AuthRefreshNotifier extends ChangeNotifier {
+  _AuthRefreshNotifier(AuthBloc bloc) {
+    _subscription = bloc.stream.listen((_) => notifyListeners());
+  }
+
+  late final StreamSubscription<AuthState> _subscription;
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
 }
 
 class _AuthRouter extends StatelessWidget {
@@ -54,7 +535,7 @@ class _AuthRouter extends StatelessWidget {
   Widget build(BuildContext context) => BlocBuilder<AuthBloc, AuthState>(
     builder: (context, state) {
       if (state is AuthAuthenticated) {
-        return _HomeScreen(profile: state.profile);
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
       }
       if (state is AuthAwaitingMfa) {
         return _MfaVerifyScreen(message: state.message);
