@@ -68,6 +68,21 @@ void main() {
       expect(appRouteRedirect(staff, '/teacher/sections'), '/teacher/subjects');
     });
 
+    test('teaching assignments need classes.view, like the API read', () {
+      final withAccess = _profile('staff', ['school.view', 'classes.view']);
+      final without = _profile('staff', ['school.view']);
+
+      expect(appRouteRedirect(withAccess, '/admin/teaching-assignments'), isNull);
+      expect(
+        appRouteRedirect(without, '/admin/teaching-assignments'),
+        '/admin/setup',
+      );
+      expect(
+        appRouteRedirect(_profile('teacher', ['classes.view']), '/admin/teaching-assignments'),
+        '/profile',
+      );
+    });
+
     test('admin routes pass when the profile holds the needed ability', () {
       final admin = _profile('staff', ['school.view', 'staff.view']);
       expect(appRouteRedirect(admin, '/admin/setup'), isNull);
@@ -114,6 +129,10 @@ void main() {
       expect(adminRouteAbility('/admin/academic-years'), 'academic_years.view');
       expect(adminRouteAbility('/admin/terms'), 'academic_years.view');
       expect(adminRouteAbility('/admin/sections'), 'classes.view');
+      expect(
+        adminRouteAbility('/admin/teaching-assignments'),
+        'classes.view',
+      );
       expect(adminRouteAbility('/admin/curriculum'), 'subjects.view');
       expect(adminRouteAbility('/admin/staff'), 'staff.view');
       expect(adminRouteAbility('/admin/roles'), 'roles.view');

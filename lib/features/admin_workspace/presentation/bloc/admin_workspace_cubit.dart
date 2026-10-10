@@ -56,6 +56,12 @@ class AdminWorkspaceCubit extends Cubit<AdminWorkspaceState> {
   /// a response for a previous account can never land in the current state.
   int _generation = 0;
 
+  /// Bumped by every operation that replaces the list (`load`, `loadProfile`).
+  /// `load`, `loadMore` and `loadProfile` drop their result when a newer
+  /// list request has started, so a late page for an earlier filter can never
+  /// be appended to, or overwrite, the list the user is looking at now.
+  int _listRequest = 0;
+
   /// Returns the cubit to its initial state and invalidates every request that
   /// is still in flight. Makes no API call. Call it when the session ends or
   /// the signed-in account changes.
@@ -67,8 +73,30 @@ class AdminWorkspaceCubit extends Cubit<AdminWorkspaceState> {
   }
 
   Future<List<AdminRecord>> fetchRecords(String path) => _repository.list(path);
+
+  /// Reads every page of a collection (100 per page, at most [maxPages]) for
+  /// pickers and name lookups. Does not touch the cubit state.
+  Future<List<AdminRecord>> fetchAll(
+    String path, {
+    Map<String, dynamic>? query,
+    int maxPages = 50,
+  }) async {
+    final records = <AdminRecord>[];
+    String? cursor;
+    for (var page = 0; page < maxPages; page++) {
+      final result = await _repository.listPage(
+        path,
+        query: {...?query, 'per_page': 100, 'cursor': ?cursor},
+      );
+      records.addAll(result.records);
+      cursor = result.nextCursor;
+      if (!result.hasMore || cursor == null) break;
+    }
+    return records;
+  }
   Future<void> load(String path, {Map<String, dynamic>? query}) async {
     final generation = _generation;
+    final request = ++_listRequest;
     _activePath = path;
     _activeQuery = query ?? const {};
     emit(
@@ -82,7 +110,7 @@ class AdminWorkspaceCubit extends Cubit<AdminWorkspaceState> {
     );
     try {
       final page = await _repository.listPage(path, query: query);
-      if (generation != _generation) return;
+      if (generation != _generation || request != _listRequest) return;
       emit(
         state.copyWith(
           loading: false,
@@ -92,7 +120,7 @@ class AdminWorkspaceCubit extends Cubit<AdminWorkspaceState> {
         ),
       );
     } catch (e) {
-      if (generation != _generation) return;
+      if (generation != _generation || request != _listRequest) return;
       emit(state.copyWith(loading: false, error: _message(e)));
     }
   }
@@ -100,13 +128,14 @@ class AdminWorkspaceCubit extends Cubit<AdminWorkspaceState> {
   Future<void> loadMore(String path) async {
     if (state.loading || !state.hasMore || state.nextCursor == null) return;
     final generation = _generation;
+    final request = _listRequest;
     emit(state.copyWith(loading: true, clearError: true));
     try {
       final page = await _repository.listPage(
         _activePath ?? path,
         query: {..._activeQuery, 'cursor': state.nextCursor},
       );
-      if (generation != _generation) return;
+      if (generation != _generation || request != _listRequest) return;
       emit(
         state.copyWith(
           loading: false,
@@ -116,7 +145,7 @@ class AdminWorkspaceCubit extends Cubit<AdminWorkspaceState> {
         ),
       );
     } catch (e) {
-      if (generation != _generation) return;
+      if (generation != _generation || request != _listRequest) return;
       emit(state.copyWith(loading: false, error: _message(e)));
     }
   }
@@ -212,13 +241,14 @@ class AdminWorkspaceCubit extends Cubit<AdminWorkspaceState> {
       submit(() => _repository.replaceRolePermissions(id, body));
   Future<void> loadProfile(String path) async {
     final generation = _generation;
+    final request = ++_listRequest;
     emit(state.copyWith(loading: true, clearError: true, records: const []));
     try {
       final record = await _repository.get(path);
-      if (generation != _generation) return;
+      if (generation != _generation || request != _listRequest) return;
       emit(state.copyWith(loading: false, records: [record]));
     } catch (e) {
-      if (generation != _generation) return;
+      if (generation != _generation || request != _listRequest) return;
       emit(state.copyWith(loading: false, error: _message(e)));
     }
   }

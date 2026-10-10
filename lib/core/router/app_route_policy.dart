@@ -31,7 +31,9 @@ String? adminRouteAbility(String path) {
   if (path.startsWith('/admin/academic-years') || path == '/admin/terms') {
     return 'academic_years.view';
   }
-  if (path == '/admin/grade-levels' || path == '/admin/sections') {
+  if (path == '/admin/grade-levels' ||
+      path == '/admin/sections' ||
+      path == '/admin/teaching-assignments') {
     return 'classes.view';
   }
   if (path == '/admin/subjects' || path == '/admin/curriculum') {

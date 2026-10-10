@@ -25,6 +25,7 @@ import 'package:school_app/features/admin_workspace/data/repositories/admin_repo
 import 'package:school_app/features/admin_workspace/presentation/bloc/admin_workspace_cubit.dart';
 import 'package:school_app/features/admin_workspace/presentation/screens/admin_screens.dart';
 import 'package:school_app/features/admin_workspace/presentation/screens/admin_special_screens.dart';
+import 'package:school_app/features/admin_workspace/presentation/screens/teaching_assignments_screen.dart';
 import 'package:school_app/features/teacher_workspace/data/datasources/teacher_workspace_remote_data_source.dart';
 import 'package:school_app/features/teacher_workspace/data/repositories/teacher_workspace_repository_impl.dart';
 import 'package:school_app/features/teacher_workspace/presentation/bloc/teacher_workspace_bloc.dart';
@@ -334,6 +335,12 @@ class _SchoolAppState extends State<SchoolApp> {
                       ),
                     ]
                   : const [],
+            ),
+          ),
+          GoRoute(
+            path: '/admin/teaching-assignments',
+            builder: (context, state) => TeachingAssignmentsScreen(
+              canManage: _hasAbility(context, 'teaching_assignments.manage'),
             ),
           ),
           GoRoute(
