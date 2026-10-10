@@ -147,9 +147,6 @@ extension AccountPermissionsX on AccountProfile {
       abilities.any(
         const {
           'school.view',
-          'academic_years.view',
-          'classes.view',
-          'subjects.view',
           'staff.view',
           'roles.view',
         }.contains,

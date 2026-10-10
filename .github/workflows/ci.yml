@@ -1,0 +1,44 @@
+# Continuous integration. No secrets are used; the workflow only reads the repository.
+# Only GitHub-owned actions are used. Flutter is cloned at a pinned tag (Dart is bundled with it).
+name: CI
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.38.10' # keep in step with pubspec.yaml sdk: ^3.10.9
+
+jobs:
+  flutter:
+    name: Analyze + test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Flutter SDK
+        id: flutter-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/flutter
+          key: flutter-${{ env.FLUTTER_VERSION }}-${{ runner.os }}
+      - name: Install Flutter (pinned tag)
+        if: steps.flutter-cache.outputs.cache-hit != 'true'
+        run: git clone --depth 1 --branch "$FLUTTER_VERSION" https://github.com/flutter/flutter.git ~/flutter
+      - name: Add Flutter to PATH
+        run: echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
+      - name: Flutter version
+        run: flutter --version
+      - run: flutter pub get
+      - name: Static analysis
+        run: flutter analyze
+      - name: Tests
+        run: flutter test
