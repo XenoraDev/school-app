@@ -8,10 +8,10 @@ This document tracks progress and completion gates across both backend delivery 
 
 | Phase | Phase Name | Backend Implemented | API Verified | Flutter Implemented | Flutter Tested | Overall Phase Status |
 |---|---|:---:|:---:|:---:|:---:|:---:|
-| **Phase 0** | **Foundation & Network Core** | [x] | [x] | [ ] | [ ] | **READY TO IMPLEMENT** |
+| **Phase 0** | **Foundation & Network Core** | [x] | [x] | [x] | [x] | **COMPLETE** |
 | **Phase 1** | **Authentication, Session & MFA** | [x] | [x] | [x] | [x] | **COMPLETE** |
 | **Phase 2A** | **Teacher Workspace (Sections/Subjects)** | [x] | [x] | [x] | [x] | **COMPLETE** |
-| **Phase 2B** | **School Structure & Staff Directory** | [x] | [x] | [ ] | [ ] | **READY TO IMPLEMENT** |
+| **Phase 2B** | **School Structure & Staff Directory** | [x] | [x] | [x] | [x] | **COMPLETE (core scope; deferred items below stay open)** |
 | **Phase 3** | **Students, Guardians & Admissions** | [ ] | [ ] | [ ] | [ ] | **BLOCKED BY BACKEND** |
 | **Phase 4** | **Teachers' Attendance Workspace** | [ ] | [ ] | [ ] | [ ] | **BLOCKED BY BACKEND** |
 | **Phase 5** | **Fees Ledger & Offline Collection** | [ ] | [ ] | [ ] | [ ] | **BLOCKED BY BACKEND** |
@@ -28,16 +28,16 @@ This document tracks progress and completion gates across both backend delivery 
 ### Phase 0: Foundation & Network Core
 * [x] **Backend Completion**: API envelope, error codes, cursor pagination, rate limiting (`routes/api.php`, `ApiResponse.php`, `ListQuery.php`).
 * [x] **API Verification**: Verified against `school-api` source code and test suite.
-* [ ] **Flutter Implementation**:
-  * [ ] Configure `Dio` network client with base URLs and timeouts.
-  * [ ] Implement `AuthInterceptor` (attaches Bearer token, handles JSON headers).
-  * [ ] Implement `ErrorInterceptor` (deserializes `ApiResponse::error` into typed `Failure` objects).
-  * [ ] Implement `ListQuery` helper for cursor pagination query parameters.
-  * [ ] Implement `AppConfig` repository consuming `GET /api/v1/app-config`.
-* [ ] **Flutter Testing**:
-  * [ ] Unit test: `ApiResponse` envelope parsing.
-  * [ ] Unit test: `ErrorCode` mapping (400, 401, 403, 404, 409, 422, 429, 500).
-  * [ ] Widget test: Network error banner rendering.
+* [x] **Flutter Implementation**:
+  * [x] Configure `Dio` network client with base URLs and timeouts.
+  * [x] Implement `AuthInterceptor` (attaches Bearer token, handles JSON headers).
+  * [x] Implement `ErrorInterceptor` (deserializes `ApiResponse::error` into typed `Failure` objects).
+  * [x] Implement `ListQuery` helper for cursor pagination query parameters.
+  * [x] Implement `AppConfig` repository consuming `GET /api/v1/app-config`.
+* [x] **Flutter Testing**:
+  * [x] Unit test: `ApiResponse` envelope parsing.
+  * [x] Unit test: `ErrorCode` mapping (400, 401, 403, 404, 409, 422, 429, 500).
+  * [x] Widget test: Network error banner rendering (`ErrorStateView`).
 
 ---
 
@@ -52,11 +52,12 @@ This document tracks progress and completion gates across both backend delivery 
   * [x] Startup session restoration and `/common/me` profile/abilities loading.
   * [x] Current-device logout and local session clearing.
   * [x] Forced local logout after any HTTP 401 response.
-  * [ ] Logout-all and change-password UI (repository/API support exists; deferred to account settings work).
+  * [x] Logout-all and change-password UI (Account security at `/profile/security`: change password and sign out of all devices; both end the local session after the server revokes every token).
 * [x] **Flutter Testing**:
   * [x] Unit test: pending-token login state and secure storage.
   * [x] Unit test: forced 401 event clears local auth data.
   * [x] Widget test: login required-field validation and error message rendering.
+  * [x] Account security: cubit, session-end and widget tests (change password, server field errors, sign-out everywhere, failure keeps the session).
 
 ---
 
@@ -89,7 +90,7 @@ This document tracks progress and completion gates across both backend delivery 
   * [x] Staff directory create/update/archive and enable/disable existing logins.
   * [x] Role and permission catalogue viewing and permission replacement with password confirmation.
   * [x] Cursor pagination plus loading, empty, retryable error, and backend error handling through the shared interceptors.
-  * [x] Invitation/provisioning, custom role create/rename/delete, staff role assignment, and offline mutations remain deferred.
+  * [ ] Invitation/provisioning, custom role create/rename/delete, staff role assignment, and offline mutations remain deferred.
 * [x] **Flutter Testing**:
   * [x] Unit tests: endpoint constants, response DTO parsing, and admin/teacher workspace ability eligibility.
   * [x] Cubit tests: checklist failure/retry and successful loading.

@@ -13,9 +13,12 @@ import 'package:school_app/features/auth/data/datasources/auth_remote_data_sourc
 import 'package:school_app/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:school_app/features/auth/domain/entities/account_profile.dart';
 import 'package:school_app/features/auth/domain/entities/mfa_enrollment_info.dart';
+import 'package:school_app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:school_app/features/auth/presentation/bloc/account_security_cubit.dart';
 import 'package:school_app/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:school_app/features/auth/presentation/bloc/auth_event.dart';
 import 'package:school_app/features/auth/presentation/bloc/auth_state.dart';
+import 'package:school_app/features/auth/presentation/screens/account_security_screen.dart';
 import 'package:school_app/features/admin_workspace/data/datasources/admin_remote_data_source.dart';
 import 'package:school_app/features/admin_workspace/data/repositories/admin_repository_impl.dart';
 import 'package:school_app/features/admin_workspace/presentation/bloc/admin_workspace_cubit.dart';
@@ -37,12 +40,11 @@ void main() {
     tokenProvider: storage,
     onUnauthorized: () => authBloc.add(const AuthForced401()),
   );
-  authBloc = AuthBloc(
-    repository: AuthRepositoryImpl(
-      remote: AuthRemoteDataSourceImpl(client: client),
-    ),
-    storage: storage,
-  )..add(const AuthAppStarted());
+  final authRepository = AuthRepositoryImpl(
+    remote: AuthRemoteDataSourceImpl(client: client),
+  );
+  authBloc = AuthBloc(repository: authRepository, storage: storage)
+    ..add(const AuthAppStarted());
   final teacherBloc = TeacherWorkspaceBloc(
     repository: TeacherWorkspaceRepositoryImpl(
       remote: TeacherWorkspaceRemoteDataSourceImpl(client: client),
@@ -54,6 +56,7 @@ void main() {
   runApp(
     SchoolApp(
       authBloc: authBloc,
+      authRepository: authRepository,
       teacherBloc: teacherBloc,
       adminCubit: adminCubit,
     ),
@@ -63,11 +66,13 @@ void main() {
 class SchoolApp extends StatefulWidget {
   const SchoolApp({
     required this.authBloc,
+    required this.authRepository,
     required this.teacherBloc,
     required this.adminCubit,
     super.key,
   });
   final AuthBloc authBloc;
+  final AuthRepository authRepository;
   final TeacherWorkspaceBloc teacherBloc;
   final AdminWorkspaceCubit adminCubit;
 
@@ -101,6 +106,13 @@ class _SchoolAppState extends State<SchoolApp> {
               ? _HomeScreen(profile: authState.profile)
               : const _AuthRouter();
         },
+      ),
+      GoRoute(
+        path: '/profile/security',
+        builder: (context, state) => BlocProvider(
+          create: (_) => AccountSecurityCubit(widget.authRepository),
+          child: const AccountSecurityScreen(),
+        ),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -814,6 +826,15 @@ class _HomeScreen extends StatelessWidget {
         ),
         Text(profile.email),
         Text('Account type: ${profile.userType}'),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            onPressed: () => context.push('/profile/security'),
+            icon: const Icon(Icons.lock_outline),
+            label: const Text('Account security'),
+          ),
+        ),
         const SizedBox(height: 20),
         const Text(
           'Permissions',
