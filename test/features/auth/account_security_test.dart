@@ -5,8 +5,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:school_app/core/errors/failures.dart';
 import 'package:school_app/core/storage/secure_storage_service.dart';
+import 'package:school_app/features/auth/domain/entities/active_token.dart';
 import 'package:school_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:school_app/features/auth/presentation/bloc/account_security_cubit.dart';
+import 'package:school_app/features/auth/presentation/bloc/active_sessions_cubit.dart';
 import 'package:school_app/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:school_app/features/auth/presentation/bloc/auth_event.dart';
 import 'package:school_app/features/auth/presentation/bloc/auth_state.dart';
@@ -172,19 +174,25 @@ void main() {
       storage = _MemoryStorage()..token = 'token';
       authBloc = AuthBloc(repository: repository, storage: storage);
       final cubit = AccountSecurityCubit(repository);
+      final sessions = ActiveSessionsCubit(repository);
       addTearDown(authBloc.close);
       addTearDown(cubit.close);
+      addTearDown(sessions.close);
       await tester.pumpWidget(
         MaterialApp(
           home: MultiBlocProvider(
             providers: [
               BlocProvider.value(value: authBloc),
               BlocProvider.value(value: cubit),
+              BlocProvider.value(value: sessions),
             ],
             child: const AccountSecurityScreen(),
           ),
         ),
       );
+      // Settle the sessions spinner so pumpAndSettle can finish.
+      await sessions.load();
+      await tester.pump();
     }
 
     Future<void> fill(
@@ -337,6 +345,9 @@ class _FakeRepository implements AuthRepository {
     if (unexpectedError != null) throw unexpectedError!;
     if (changePasswordFailure != null) throw changePasswordFailure!;
   }
+
+  @override
+  Future<List<ActiveToken>> listTokens() async => const [];
 
   @override
   Future<int> logoutAll() async {

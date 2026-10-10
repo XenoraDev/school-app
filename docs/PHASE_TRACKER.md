@@ -58,6 +58,8 @@ This document tracks progress and completion gates across both backend delivery 
   * [x] Unit test: forced 401 event clears local auth data.
   * [x] Widget test: login required-field validation and error message rendering.
   * [x] Account security: cubit, session-end and widget tests (change password, server field errors, sign-out everywhere, failure keeps the session).
+  * [x] Active sessions (Account security > Active sessions): list of device tokens with created, last-used and expiry dates, current session marked, sign out of other sessions with confirmation, list refresh, 404 message, loading, empty, error/retry and saving states.
+  * [x] Active sessions: cubit and widget tests (load, retry, revoke, current session never revoked, one change at a time, 404, stale list answer).
 
 ---
 
