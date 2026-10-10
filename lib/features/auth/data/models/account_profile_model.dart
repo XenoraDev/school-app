@@ -15,11 +15,14 @@ import 'package:school_app/features/auth/domain/entities/account_profile.dart';
 ///     "abilities": ["classes.view", "subjects.view"],
 ///     "email_verified": true,
 ///     "mfa_enabled": false,
-///     "mfa_required": false
+///     "mfa_required": false,
+///     "is_teaching": true
 ///   }
 /// }
 /// ```
 /// Note: `abilities` never contains `auth.*` — filtered by the backend.
+/// `is_teaching` (school accounts, Laravel PR #10) can be missing on an older
+/// API; it is then `null`.
 class AccountProfileModel {
   final int id;
   final String kind;
@@ -31,6 +34,7 @@ class AccountProfileModel {
   final bool emailVerified;
   final bool mfaEnabled;
   final bool mfaRequired;
+  final bool? isTeaching;
 
   const AccountProfileModel({
     required this.id,
@@ -43,6 +47,7 @@ class AccountProfileModel {
     required this.emailVerified,
     required this.mfaEnabled,
     required this.mfaRequired,
+    this.isTeaching,
   });
 
   factory AccountProfileModel.fromJson(Map<String, dynamic> json) {
@@ -65,6 +70,7 @@ class AccountProfileModel {
       emailVerified: d['email_verified'] as bool? ?? false,
       mfaEnabled: d['mfa_enabled'] as bool? ?? false,
       mfaRequired: d['mfa_required'] as bool? ?? false,
+      isTeaching: d['is_teaching'] is bool ? d['is_teaching'] as bool : null,
     );
   }
 
@@ -79,6 +85,7 @@ class AccountProfileModel {
         emailVerified: emailVerified,
         mfaEnabled: mfaEnabled,
         mfaRequired: mfaRequired,
+        isTeaching: isTeaching,
       );
 
   @override
@@ -95,7 +102,8 @@ class AccountProfileModel {
         school == other.school &&
         emailVerified == other.emailVerified &&
         mfaEnabled == other.mfaEnabled &&
-        mfaRequired == other.mfaRequired;
+        mfaRequired == other.mfaRequired &&
+        isTeaching == other.isTeaching;
   }
 
   @override
@@ -110,6 +118,7 @@ class AccountProfileModel {
         emailVerified,
         mfaEnabled,
         mfaRequired,
+        isTeaching,
       );
 }
 
