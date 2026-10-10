@@ -64,6 +64,11 @@ class AccountProfile {
   /// users/roles.manage holders).
   final bool mfaRequired;
 
+  /// Whether the login has a teacher scope (`is_teaching` of `/common/me`):
+  /// `true` for teaching staff, `false` for other staff, `null` when the API
+  /// did not send it (an older API). Display information for landing only.
+  final bool? isTeaching;
+
   const AccountProfile({
     required this.id,
     required this.kind,
@@ -75,6 +80,7 @@ class AccountProfile {
     required this.emailVerified,
     required this.mfaEnabled,
     required this.mfaRequired,
+    this.isTeaching,
   });
 
   @override
@@ -91,7 +97,8 @@ class AccountProfile {
         school != other.school ||
         emailVerified != other.emailVerified ||
         mfaEnabled != other.mfaEnabled ||
-        mfaRequired != other.mfaRequired) {
+        mfaRequired != other.mfaRequired ||
+        isTeaching != other.isTeaching) {
       return false;
     }
     if (abilities.length != other.abilities.length) return false;
@@ -114,6 +121,7 @@ class AccountProfile {
     emailVerified,
     mfaEnabled,
     mfaRequired,
+    isTeaching,
   );
 
   @override
@@ -135,10 +143,16 @@ extension AccountPermissionsX on AccountProfile {
   bool get hasTeachingAccess =>
       userType == 'teacher' || (userType == 'staff' && can('classes.view'));
 
+  /// `true` for a staff account the API reports as not teaching
+  /// (`isTeaching == false`), such as a receptionist. An unknown (`null`)
+  /// signal is not treated as non-teaching.
+  bool get isNonTeachingStaff => userType == 'staff' && isTeaching == false;
+
   /// Whether this profile may enter the teacher workspace UI.
   /// Backend authorization still decides each endpoint request.
   bool get canOpenTeacherWorkspace =>
       (userType == 'teacher' || userType == 'staff') &&
+      !isNonTeachingStaff &&
       (can('classes.view') || can('subjects.view'));
 
   /// User type alone never grants access to school administration.

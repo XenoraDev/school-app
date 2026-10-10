@@ -50,6 +50,7 @@ This document tracks progress and completion gates across both backend delivery 
   * [x] MFA verification with TOTP and recovery codes.
   * [x] MFA enrollment, confirmation, QR display, and one-time recovery code display.
   * [x] Startup session restoration and `/common/me` profile/abilities loading.
+  * [x] Teaching signal (`is_teaching` of `/common/me`, TBV-05): nullable `AccountProfile.isTeaching`; staff reported as not teaching land on `/profile` and the teacher route guard agrees; a missing field keeps today's behavior; admin landing and the Accountant case are unchanged.
   * [x] Current-device logout and local session clearing.
   * [x] Forced local logout after any HTTP 401 response.
   * [x] Logout-all and change-password UI (Account security at `/profile/security`: change password and sign out of all devices; both end the local session after the server revokes every token).
@@ -60,6 +61,7 @@ This document tracks progress and completion gates across both backend delivery 
   * [x] Account security: cubit, session-end and widget tests (change password, server field errors, sign-out everywhere, failure keeps the session).
   * [x] Active sessions (Account security > Active sessions): list of device tokens with created, last-used and expiry dates, current session marked, sign out of other sessions with confirmation, list refresh, 404 message, loading, empty, error/retry and saving states.
   * [x] Active sessions: cubit and widget tests (load, retry, revoke, current session never revoked, one change at a time, 404, stale list answer).
+  * [x] Teaching signal: parsing (true, false, missing, null, non-boolean), landing and teacher-route-guard decisions, missing-field compatibility, unchanged admin landing, landing/guard agreement for every account and signal combination.
 
 ---
 

@@ -250,11 +250,14 @@ Stable `code` values (`ErrorCode` enum):
       ],
       "email_verified": true,
       "mfa_enabled": false,
-      "mfa_required": false
+      "mfa_required": false,
+      "is_teaching": true
     },
     "meta": { "request_id": "..." }
   }
   ```
+* **`is_teaching`** (boolean, school accounts only; Laravel PR #10): `true` when the login has a teacher scope (`TeacherScope::profileFor`: the login is active and linked to a staff profile that is active, not on leave and marked as teaching). It is `false` for other staff (for example a Receptionist), for staff on leave or no longer marked as teaching, and for a login with no staff profile. It says nothing about assignments (a teacher with none gets `true`). Staff who resign, are terminated or are archived lose their login and every token, so they get `401` instead of `false`. The platform `me` has no such field.
+* **Client use**: the app reads it as a nullable `AccountProfile.isTeaching`. A staff account with `false` does not get the Teacher workspace (landing and route guard send it to `/profile`); a missing field stays `null` and keeps the previous behavior, so older APIs still work. It is display information only: the API enforces every request. Teacher-type logins and the admin gate are not affected by it.
 
 ### 3.6 Session Revocation
 * **Logout (Current Device)**: `POST /api/v1/auth/logout` $\rightarrow$ `200 OK { "data": { "logged_out": true } }`
