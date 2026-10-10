@@ -373,67 +373,16 @@ class _AdminResourceScreenState extends State<AdminResourceScreen> {
     final fields = widget.fields
         .where((field) => record == null || field.editable)
         .toList();
-    final controllers = {
-      for (final field in fields)
-        field.key: TextEditingController(
-          text: record?.values[field.key]?.toString() ?? '',
-        ),
-    };
-    final form = GlobalKey<FormState>();
     await showDialog<void>(
       context: context,
-      builder: (dialog) => AlertDialog(
-        title: Text(
-          '${record == null ? 'Add' : 'Edit'} ${widget.title.singular}',
-        ),
-        content: Form(
-          key: form,
-          child: SizedBox(
-            width: 480,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final field in fields)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: TextFormField(
-                        controller: controllers[field.key],
-                        keyboardType: field.multiline
-                            ? TextInputType.multiline
-                            : TextInputType.text,
-                        maxLines: field.multiline ? 3 : 1,
-                        decoration: InputDecoration(
-                          labelText: field.label,
-                          hintText: field.hint,
-                        ),
-                        validator: field.required
-                            ? (value) => value == null || value.trim().isEmpty
-                                  ? 'Required'
-                                  : null
-                            : null,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialog),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => _save(dialog, form, controllers, fields, record),
-            child: const Text('Save'),
-          ),
-        ],
+      builder: (_) => _AdminResourceEditDialog(
+        title: '${record == null ? 'Add' : 'Edit'} ${widget.title.singular}',
+        fields: fields,
+        record: record,
+        onSave: (dialog, form, controllers) =>
+            _save(dialog, form, controllers, fields, record),
       ),
     );
-    for (final controller in controllers.values) {
-      controller.dispose();
-    }
   }
 
   Future<void> _save(
@@ -443,6 +392,7 @@ class _AdminResourceScreenState extends State<AdminResourceScreen> {
     List<AdminField> fields,
     AdminRecord? record,
   ) async {
+    if (!mounted || !dialog.mounted) return;
     if (!form.currentState!.validate()) return;
     final body = <String, dynamic>{};
     for (final field in fields) {
@@ -455,6 +405,7 @@ class _AdminResourceScreenState extends State<AdminResourceScreen> {
         'int' => int.tryParse(value) ?? value,
         'bool' => value.toLowerCase() == 'true',
         'json' => jsonDecode(value),
+        'date' => _serializeDate(value),
         _ => value,
       };
     }
@@ -473,6 +424,14 @@ class _AdminResourceScreenState extends State<AdminResourceScreen> {
       await cubit.loadProfile(widget.path);
     if (mounted && cubit.state.error == null && dialog.mounted)
       Navigator.pop(dialog);
+  }
+
+  String _serializeDate(String value) {
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) return value;
+    return '${parsed.year.toString().padLeft(4, '0')}-'
+        '${parsed.month.toString().padLeft(2, '0')}-'
+        '${parsed.day.toString().padLeft(2, '0')}';
   }
 
   Future<void> _action(AdminRecord record, String action) async {
@@ -669,6 +628,120 @@ class _AdminResourceScreenState extends State<AdminResourceScreen> {
         ),
       ),
     );
+  }
+}
+
+class _AdminResourceEditDialog extends StatefulWidget {
+  const _AdminResourceEditDialog({
+    required this.title,
+    required this.fields,
+    required this.record,
+    required this.onSave,
+  });
+
+  final String title;
+  final List<AdminField> fields;
+  final AdminRecord? record;
+  final Future<void> Function(
+    BuildContext dialog,
+    GlobalKey<FormState> form,
+    Map<String, TextEditingController> controllers,
+  )
+  onSave;
+
+  @override
+  State<_AdminResourceEditDialog> createState() =>
+      _AdminResourceEditDialogState();
+}
+
+class _AdminResourceEditDialogState extends State<_AdminResourceEditDialog> {
+  final _form = GlobalKey<FormState>();
+  late final Map<String, TextEditingController> _controllers = {
+    for (final field in widget.fields)
+      field.key: TextEditingController(
+        text: widget.record?.values[field.key]?.toString() ?? '',
+      ),
+  };
+
+  @override
+  void dispose() {
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(widget.title),
+    content: Form(
+      key: _form,
+      child: SizedBox(
+        width: 480,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final field in widget.fields)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: TextFormField(
+                    controller: _controllers[field.key],
+                    readOnly: field.type == 'date',
+                    onTap: field.type == 'date'
+                        ? () => _pickDate(context, _controllers[field.key]!)
+                        : null,
+                    keyboardType: field.multiline
+                        ? TextInputType.multiline
+                        : TextInputType.text,
+                    maxLines: field.multiline ? 3 : 1,
+                    decoration: InputDecoration(
+                      labelText: field.label,
+                      hintText: field.hint,
+                      suffixIcon: field.type == 'date'
+                          ? const Icon(Icons.calendar_today)
+                          : null,
+                    ),
+                    validator: field.required
+                        ? (value) => value == null || value.trim().isEmpty
+                              ? 'Required'
+                              : null
+                        : null,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        onPressed: () => widget.onSave(context, _form, _controllers),
+        child: const Text('Save'),
+      ),
+    ],
+  );
+
+  Future<void> _pickDate(
+    BuildContext context,
+    TextEditingController controller,
+  ) async {
+    final current = DateTime.tryParse(controller.text.trim());
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: current ?? DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime(2100),
+    );
+    if (picked == null || !mounted || !context.mounted) return;
+    controller.text =
+        '${picked.year.toString().padLeft(4, '0')}-'
+        '${picked.month.toString().padLeft(2, '0')}-'
+        '${picked.day.toString().padLeft(2, '0')}';
   }
 }
 

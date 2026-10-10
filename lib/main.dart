@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:school_app/core/config/env_config.dart';
 import 'package:school_app/core/config/api_endpoints.dart';
+import 'package:school_app/core/router/app_route_policy.dart';
 import 'package:school_app/core/network/api_client.dart';
 import 'package:school_app/core/storage/secure_storage_service.dart';
 import 'package:school_app/features/auth/data/datasources/auth_remote_data_source.dart';
@@ -26,7 +27,6 @@ import 'package:school_app/features/teacher_workspace/presentation/bloc/teacher_
 import 'package:school_app/features/teacher_workspace/presentation/screens/my_sections_screen.dart';
 import 'package:school_app/features/teacher_workspace/presentation/screens/my_subjects_screen.dart';
 import 'package:school_app/features/teacher_workspace/presentation/screens/teacher_workspace_shell.dart';
-import 'package:school_app/features/teacher_workspace/presentation/teacher_route_policy.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -86,30 +86,10 @@ class _SchoolAppState extends State<SchoolApp> {
     refreshListenable: _refreshNotifier,
     redirect: (context, routeState) {
       final authState = widget.authBloc.state;
-      final path = routeState.uri.path;
-      if (authState is AuthAuthenticated) {
-        final profile = authState.profile;
-        if (path == '/') {
-          if (profile.canOpenTeacherWorkspace) {
-            return profile.can('classes.view')
-                ? '/teacher/sections'
-                : '/teacher/subjects';
-          }
-          if (profile.canOpenAdminWorkspace) return '/admin/setup';
-          return '/profile';
-        }
-        final teacherRedirect = teacherWorkspaceRouteRedirect(profile, path);
-        if (teacherRedirect != null) return teacherRedirect;
-        if (path.startsWith('/admin')) {
-          if (!profile.canOpenAdminWorkspace) return '/profile';
-          final requiredAbility = _adminRouteAbility(path);
-          if (requiredAbility != null && !profile.can(requiredAbility)) {
-            return _firstAdminRoute(profile);
-          }
-        }
-        return null;
-      }
-      return path == '/' ? null : '/';
+      return appRouteRedirect(
+        authState is AuthAuthenticated ? authState.profile : null,
+        routeState.uri.path,
+      );
     },
     routes: [
       GoRoute(path: '/', builder: (context, state) => const _AuthRouter()),
@@ -409,10 +389,11 @@ class _SchoolAppState extends State<SchoolApp> {
                 ),
                 AdminField(
                   'joined_on',
-                  'Joined on (YYYY-MM-DD)',
+                  'Joined on',
                   nullable: true,
+                  type: 'date',
                 ),
-                AdminField('left_on', 'Left on (YYYY-MM-DD)', nullable: true),
+                AdminField('left_on', 'Left on', nullable: true, type: 'date'),
               ],
               actions: [
                 if (_hasAbility(context, 'users.manage')) ...[
@@ -475,38 +456,6 @@ class _SchoolAppState extends State<SchoolApp> {
       child: child ?? const SizedBox.shrink(),
     ),
   );
-}
-
-String? _adminRouteAbility(String path) {
-  if (path == '/admin' || path == '/admin/setup' || path == '/admin/profile') {
-    return 'school.view';
-  }
-  if (path == '/admin/settings') {
-    return 'school.view';
-  }
-  if (path.startsWith('/admin/academic-years') || path == '/admin/terms') {
-    return 'academic_years.view';
-  }
-  if (path == '/admin/grade-levels' || path == '/admin/sections') {
-    return 'classes.view';
-  }
-  if (path == '/admin/subjects' || path == '/admin/curriculum') {
-    return 'subjects.view';
-  }
-  if (path == '/admin/staff') {
-    return 'staff.view';
-  }
-  if (path == '/admin/roles') {
-    return 'roles.view';
-  }
-  return null;
-}
-
-String _firstAdminRoute(AccountProfile profile) {
-  for (final item in AdminWorkspaceShell.items) {
-    if (profile.can(item.$4)) return item.$1;
-  }
-  return '/profile';
 }
 
 bool _hasAbility(BuildContext context, String ability) {
