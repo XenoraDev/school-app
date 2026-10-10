@@ -7,6 +7,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:school_app/core/config/env_config.dart';
 import 'package:school_app/core/config/api_endpoints.dart';
 import 'package:school_app/core/router/app_route_policy.dart';
+import 'package:school_app/core/session/workspace_session_guard.dart';
 import 'package:school_app/core/network/api_client.dart';
 import 'package:school_app/core/storage/secure_storage_service.dart';
 import 'package:school_app/features/auth/data/datasources/auth_remote_data_source.dart';
@@ -465,7 +466,7 @@ class _SchoolAppState extends State<SchoolApp> {
         BlocProvider.value(value: widget.teacherBloc),
         BlocProvider.value(value: widget.adminCubit),
       ],
-      child: child ?? const SizedBox.shrink(),
+      child: WorkspaceSessionGuard(child: child ?? const SizedBox.shrink()),
     ),
   );
 }
