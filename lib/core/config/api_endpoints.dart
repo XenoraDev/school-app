@@ -93,4 +93,13 @@ abstract final class ApiEndpoints {
       '${staffRecord(id)}/enable-login';
   static String role(String id) => '$roles/$id';
   static String rolePermissions(String id) => '${role(id)}/permissions';
+
+  // ── Phase 2B — Teaching assignments ──────────────────────────────────────
+
+  /// GET (list) and POST (create) /api/v1/school/teaching-assignments
+  static const String teachingAssignments = '/school/teaching-assignments';
+  static String teachingAssignmentEnd(String id) =>
+      '$teachingAssignments/$id/end';
+  static String teachingAssignmentReactivate(String id) =>
+      '$teachingAssignments/$id/reactivate';
 }

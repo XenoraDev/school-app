@@ -88,12 +88,14 @@ This document tracks progress and completion gates across both backend delivery 
   * [x] Grade level CRUD/archive/reorder; section CRUD/close/reopen/class-teacher assignment.
   * [x] Subject CRUD/archive and curriculum replacement.
   * [x] Staff directory create/update/archive and enable/disable existing logins.
+  * [x] Teaching assignments (`/admin/teaching-assignments`): list with status filter, assign teacher, end and reactivate; needs `classes.view`, changes need `teaching_assignments.manage`.
   * [x] Role and permission catalogue viewing and permission replacement with password confirmation.
   * [x] Cursor pagination plus loading, empty, retryable error, and backend error handling through the shared interceptors.
   * [ ] Invitation/provisioning, custom role create/rename/delete, staff role assignment, and offline mutations remain deferred.
 * [x] **Flutter Testing**:
   * [x] Unit tests: endpoint constants, response DTO parsing, and admin/teacher workspace ability eligibility.
   * [x] Cubit tests: checklist failure/retry and successful loading.
+  * [x] Teaching assignments: `fetchAll` paging, screen list/filter/empty/error states, assign (choices, validation, server rejection), end with confirmation, reactivate, read-only view, busy guard.
   * [x] Widget test: setup checklist rendering.
 
 ---

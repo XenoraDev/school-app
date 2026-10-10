@@ -34,6 +34,12 @@ class AdminWorkspaceShell extends StatelessWidget {
     ('/admin/terms', 'Terms', Icons.event_note, 'academic_years.view'),
     ('/admin/grade-levels', 'Grade levels', Icons.stairs, 'classes.view'),
     ('/admin/sections', 'Sections', Icons.class_, 'classes.view'),
+    (
+      '/admin/teaching-assignments',
+      'Teaching assignments',
+      Icons.assignment_ind,
+      'classes.view',
+    ),
     ('/admin/subjects', 'Subjects', Icons.menu_book, 'subjects.view'),
     ('/admin/curriculum', 'Curriculum', Icons.library_books, 'subjects.view'),
     ('/admin/staff', 'Staff directory', Icons.people, 'staff.view'),

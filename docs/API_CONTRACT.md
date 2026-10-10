@@ -353,6 +353,11 @@ These routes require a full authenticated session, the staff audience, and the e
 * Create requires `{employee_no,full_name}` and accepts email, phone, designation, department, `is_teaching`, `joined_on`, and `left_on`. Update requires the returned `version`. Resource rows expose the staff record and login state, never an internal user ID.
 * Login creation, invitations, invitation acceptance, and staff role assignment are separate routes and outside this Phase 2B client scope.
 
+### Teaching assignments
+* `GET /school/teaching-assignments` (`classes.view`) returns `{id, academic_year, section, subject, staff, status: active|ended, ended_at}` with public ids only, cursor-paged, with `filter[academic_year|section|subject|staff|status]`. The client resolves names from the sections, grade-levels, academic-years, subjects and staff lists.
+* `POST /school/teaching-assignments` (`teaching_assignments.manage`) takes `{section, subject, staff}`; the year is the section's. The API answers 422 for a staff member who is not active and teaching, a subject outside the section's curriculum, or a foreign id, and 409 for a closed section or year and for a combination that already exists (reactivate it instead).
+* `POST /school/teaching-assignments/{id}/end` and `.../reactivate` (`teaching_assignments.manage`) change the status; reactivating returns 409 unless the year is open, the section active, the staff member active and teaching, and the subject still in the curriculum.
+
 ### Roles and permissions
 * `GET /school/permissions` returns module groups containing `{name,action}`. `GET /school/roles` returns `{id,name,reserved,protected,permission_count,holder_count}`; `GET /school/roles/{id}` also returns permission names. Both require `roles.view`.
 * `PUT /school/roles/{id}/permissions` requires `roles.manage` and `{permissions:[name,...],password}`. It replaces the complete set, enforces backend no-escalation/protected-role rules, and revokes affected holders' sessions. Custom role create/rename/delete are excluded from Phase 2B.
