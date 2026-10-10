@@ -152,8 +152,10 @@ extension AccountPermissionsX on AccountProfile {
 Phase 2A and 2B use separate Teacher and Admin route shells. Teacher entry requires
 `user_type` teacher/staff plus `classes.view` or `subjects.view`. Admin entry
 requires `user_type=staff` and an admin read ability (`school.view`,
-`academic_years.view`, `classes.view`, `subjects.view`, `staff.view`, or
-`roles.view`). Navigation and mutation controls are hidden unless the matching
+`staff.view`, or `roles.view`); holding only `academic_years.view`,
+`classes.view`, `subjects.view` or `users.view` does not open Admin. When an
+account qualifies for both the Admin and Teacher workspaces, Admin takes
+priority on landing. Navigation and mutation controls are hidden unless the matching
 read/manage ability is present. `/profile` remains a valid route for every
 authenticated account. These are UX checks only; API requests still rely on
 Laravel audience middleware, token abilities, and policies.
