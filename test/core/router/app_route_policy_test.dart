@@ -30,6 +30,13 @@ void main() {
       expect(appRouteRedirect(_profile('student', []), '/'), '/profile');
     });
 
+    test('every signed-in account can open account security', () {
+      for (final type in ['staff', 'teacher', 'parent', 'student']) {
+        expect(appRouteRedirect(_profile(type, []), '/profile/security'), isNull);
+      }
+      expect(appRouteRedirect(null, '/profile/security'), '/');
+    });
+
     test('a teacher holding admin abilities is kept out of /admin', () {
       final teacher = _profile('teacher', [
         'school.view',

@@ -70,6 +70,18 @@ class AuthLogoutAllRequested extends AuthEvent {
   const AuthLogoutAllRequested();
 }
 
+/// The server already revoked this session (password change, or sign-out on
+/// every device). Clears local session data and returns to login with
+/// [message]; makes no API call.
+class AuthSessionEnded extends AuthEvent {
+  final String message;
+
+  const AuthSessionEnded(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}
+
 /// Emitted by [AuthInterceptor] when any API response returns HTTP 401.
 ///
 /// Forces immediate local session wipe and routing to login.

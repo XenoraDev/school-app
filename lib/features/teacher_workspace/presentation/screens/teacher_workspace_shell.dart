@@ -66,6 +66,11 @@ class _TeacherWorkspaceShellState extends State<TeacherWorkspaceShell> {
         title: Text(widget.profile.school.name),
         actions: [
           IconButton(
+            tooltip: 'Account security',
+            icon: const Icon(Icons.lock_outline),
+            onPressed: () => context.push('/profile/security'),
+          ),
+          IconButton(
             tooltip: 'Sign out',
             icon: const Icon(Icons.logout),
             onPressed: () =>

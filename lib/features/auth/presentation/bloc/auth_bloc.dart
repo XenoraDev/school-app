@@ -50,6 +50,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthMfaConfirmRequested>(_onMfaConfirmRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
     on<AuthLogoutAllRequested>(_onLogoutAllRequested);
+    on<AuthSessionEnded>(_onSessionEnded);
     on<AuthForced401>(_onForced401);
   }
 
@@ -254,6 +255,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       await _storage.clearAll();
       emit(const AuthUnauthenticated());
     }
+  }
+
+  Future<void> _onSessionEnded(
+    AuthSessionEnded event,
+    Emitter<AuthState> emit,
+  ) async {
+    await _storage.clearAll();
+    emit(AuthUnauthenticated(message: event.message));
   }
 
   /// Triggered by [AuthInterceptor.onUnauthorized] on any HTTP 401 response.
