@@ -16,6 +16,7 @@ import 'package:school_app/features/auth/domain/entities/account_profile.dart';
 import 'package:school_app/features/auth/domain/entities/mfa_enrollment_info.dart';
 import 'package:school_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:school_app/features/auth/presentation/bloc/account_security_cubit.dart';
+import 'package:school_app/features/auth/presentation/bloc/active_sessions_cubit.dart';
 import 'package:school_app/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:school_app/features/auth/presentation/bloc/auth_event.dart';
 import 'package:school_app/features/auth/presentation/bloc/auth_state.dart';
@@ -111,8 +112,16 @@ class _SchoolAppState extends State<SchoolApp> {
       ),
       GoRoute(
         path: '/profile/security',
-        builder: (context, state) => BlocProvider(
-          create: (_) => AccountSecurityCubit(widget.authRepository),
+        builder: (context, state) => MultiBlocProvider(
+          providers: [
+            BlocProvider(
+              create: (_) => AccountSecurityCubit(widget.authRepository),
+            ),
+            BlocProvider(
+              create: (_) =>
+                  ActiveSessionsCubit(widget.authRepository)..load(),
+            ),
+          ],
           child: const AccountSecurityScreen(),
         ),
       ),

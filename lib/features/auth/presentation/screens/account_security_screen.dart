@@ -5,9 +5,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:school_app/features/auth/presentation/bloc/account_security_cubit.dart';
 import 'package:school_app/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:school_app/features/auth/presentation/bloc/auth_event.dart';
+import 'package:school_app/features/auth/presentation/widgets/active_sessions_section.dart';
 
-/// Change password and sign out of every device. Needs an [AuthBloc] and an
-/// [AccountSecurityCubit] above it. Password rules are enforced by the API and
+/// Change password, sign out of every device and review active sessions. Needs
+/// an [AuthBloc], an [AccountSecurityCubit] and an [ActiveSessionsCubit] above
+/// it. Password rules are enforced by the API and
 /// its messages are shown as returned.
 class AccountSecurityScreen extends StatefulWidget {
   const AccountSecurityScreen({super.key});
@@ -168,6 +170,8 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                   icon: const Icon(Icons.devices_other),
                   label: const Text('Sign out everywhere'),
                 ),
+                const Divider(height: 48),
+                const ActiveSessionsSection(),
               ],
             ),
           );

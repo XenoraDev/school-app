@@ -40,7 +40,7 @@ This roadmap is synchronized directly with the backend roadmap of `school-api`.
     * App startup session restoration: Reads stored token $\rightarrow$ calls `GET /api/v1/common/me` $\rightarrow$ parses user type and abilities.
     * Automatic logout on HTTP 401 unauthenticated response.
   * **Profile & Security Screen**:
-    * View active device tokens (`GET /auth/tokens`).
+    * View active device tokens (`GET /auth/tokens`) and sign out other sessions (`DELETE /auth/tokens/{id}`) — implemented in Account security > Active sessions; see `PHASE_TRACKER.md`.
     * Change password (`POST /auth/password/change`).
     * Logout from this device (`POST /auth/logout`) or all devices (`POST /auth/logout-all`).
 * **Exit Criteria**: End-to-end authentication, MFA challenge, and session restoration verified against local backend.

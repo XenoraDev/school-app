@@ -259,8 +259,8 @@ Stable `code` values (`ErrorCode` enum):
 ### 3.6 Session Revocation
 * **Logout (Current Device)**: `POST /api/v1/auth/logout` $\rightarrow$ `200 OK { "data": { "logged_out": true } }`
 * **Logout All Devices**: `POST /api/v1/auth/logout-all` $\rightarrow$ `200 OK { "data": { "logged_out": true, "revoked": 3 } }`
-* **List Active Tokens**: `GET /api/v1/auth/tokens` $\rightarrow$ `200 OK`
-* **Revoke Specific Token**: `DELETE /api/v1/auth/tokens/{token_id}` $\rightarrow$ `200 OK`
+* **List Active Tokens**: `GET /api/v1/auth/tokens` $\rightarrow$ `200 OK { "data": [ { "id": 42, "name": "login", "current": true, "created_at": "...", "last_used_at": null, "expires_at": "..." } ], "meta": { "request_id": "..." } }`. The array is not paginated, newest first (`id` descending), and holds only the caller's own tokens. `id` is an integer, `current` marks the token of this request, the dates are ISO 8601 with offset and `last_used_at` can be `null`. Every token expires (default 12 h, at most 30 days). `name` is a generic label (for example `login`), not a device name, and the list is not filtered by token type, so a pending-MFA token can appear. The app shows it under Account security > Active sessions.
+* **Revoke Specific Token**: `DELETE /api/v1/auth/tokens/{token_id}` ({token_id} must be numeric) $\rightarrow$ `200 OK { "data": { "revoked": true }, "meta": { ... } }`. The token is looked up among the caller's own tokens only: a missing, already revoked or foreign id gives the same `404 { "code": "not_found" }`, and nothing is revealed about other accounts. The API also lets a caller revoke their own current token this way; the app does not offer that (it uses logout and logout-all) and only shows the action for tokens where `current` is false. After a successful revoke or a 404 the app reloads the list; the 404 is shown as "That session no longer exists."
 * **Change Password**: `POST /api/v1/auth/password/change` (Revokes all active tokens upon success, requiring re-login).
 
 ---
